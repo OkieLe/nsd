@@ -3,6 +3,7 @@ package io.github.boopited.nsd
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.util.Log
 
 class NsdClient(context: Context, private val serviceType: String, private val callback: Callback)
     : NsdManager.DiscoveryListener, NsdManager.ResolveListener {
@@ -26,10 +27,6 @@ class NsdClient(context: Context, private val serviceType: String, private val c
         nsdManager.stopServiceDiscovery(this)
     }
 
-    fun resolve(serviceInfo: NsdServiceInfo) {
-        nsdManager.resolveService(serviceInfo, this)
-    }
-
     override fun onStartDiscoveryFailed(serviceType: String?, errorCode: Int) {
         callback.onDiscoveryStart(false, errorCode)
     }
@@ -48,13 +45,25 @@ class NsdClient(context: Context, private val serviceType: String, private val c
 
     override fun onServiceFound(serviceInfo: NsdServiceInfo?) {
         serviceInfo?.let {
-            callback.onServiceFound(it)
+            when {
+                it.serviceType != serviceType ->
+                    Log.d(TAG, "Unknown Service Type: ${it.serviceType}")
+                else -> {
+                    callback.onServiceFound(it)
+                    nsdManager.resolveService(it, this)
+                }
+            }
         }
     }
 
     override fun onServiceLost(serviceInfo: NsdServiceInfo?) {
         serviceInfo?.let {
-            callback.onServiceLost(it)
+            when {
+                it.serviceType != serviceType ->
+                    Log.d(TAG, "Unknown Service Type: ${it.serviceType}")
+                else ->
+                    callback.onServiceLost(it)
+            }
         }
     }
 
@@ -68,5 +77,9 @@ class NsdClient(context: Context, private val serviceType: String, private val c
         serviceInfo?.let {
             callback.onServiceResolved(it)
         }
+    }
+
+    companion object {
+        private const val TAG = "NsdClient"
     }
 }
